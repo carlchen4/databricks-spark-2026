@@ -1,3 +1,42 @@
+### 1️⃣ Working example:
+
+```python
+df.select(df.amount * cur).show(5)
+```
+
+* Here, `df.amount` is a **`Column` object**, so PySpark knows how to do column-wise arithmetic.
+* Multiplying it by a scalar `cur` works perfectly.
+
+---
+
+### 2️⃣ Failing example:
+
+```python
+df.select("amount" * cur).show(5)
+```
+
+* `"amount"` is a **Python string**, not a PySpark `Column`.
+* `"amount" * cur` is just Python string repetition (like `"amountamountamount..."`), **not a column operation**, so PySpark fails.
+
+---
+
+### 3️⃣ Also working:
+
+```python
+from pyspark.sql.functions import col
+df.select(col("amount") * cur).show(5)
+```
+
+* `col("amount")` converts the string `"amount"` into a **`Column` object**, so now the multiplication works like in example 1.
+
+---
+
+✅ **Key takeaway:**
+
+* In PySpark, arithmetic or transformations must happen on **`Column` objects**, not plain Python strings.
+* Use either `df.column_name` or `col("column_name")`.
+
+
 
 
 ## 1️⃣ `col()` 是什么？
