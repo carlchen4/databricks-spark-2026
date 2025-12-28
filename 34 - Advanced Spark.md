@@ -1,3 +1,149 @@
+这是 **Spark / Databricks Window** 里**最核心、也是面试必问**的一题。
+我用 **一句话 → 对比表 → 直觉例子 → 什么时候用哪个** 来讲。
+
+---
+
+## 一句话版（先背）
+
+* **`rowsBetween`**：
+  👉 按 **行数** 滑动（最近 N 笔交易）
+
+* **`rangeBetween`**：
+  👉 按 **时间 / 数值范围** 滑动（最近 N 天）
+
+---
+
+## 1️⃣ 核心对比表（重点）
+
+| 维度         | rowsBetween | rangeBetween        |
+| ---------- | ----------- | ------------------- |
+| 基于什么       | 行数          | 数值 / 时间             |
+| 是否依赖时间连续   | ❌ 不需要       | ✅ 需要                |
+| orderBy 要求 | 任何可排序       | **必须数值**            |
+| 是否需要 cast  | ❌           | ✅（timestamp → long） |
+| 窗口大小       | 固定行数        | 行数不固定               |
+| 常见用途       | 最近 N 笔交易    | 最近 N 天              |
+
+---
+
+## 2️⃣ 代码对比（你现在正在用的）
+
+### rowsBetween：最近 3 笔交易
+
+```python
+w_rows = (
+    Window
+    .partitionBy("account_id")
+    .orderBy("txn_ts")
+    .rowsBetween(-2, 0)
+)
+```
+
+👉 不管交易时间隔多久
+👉 只要是最近 **3 笔**
+
+---
+
+### rangeBetween：最近 7 天
+
+```python
+w_range = (
+    Window
+    .partitionBy("account_id")
+    .orderBy(col("txn_ts").cast("long"))
+    .rangeBetween(-7*86400, 0)
+)
+```
+
+👉 不管有多少笔
+👉 只看 **7 天内**
+
+---
+
+## 3️⃣ 直觉例子（银行交易）
+
+### 同一个账户的交易
+
+| 时间     | 金额  |
+| ------ | --- |
+| Day 1  | 100 |
+| Day 2  | 50  |
+| Day 20 | 200 |
+
+---
+
+### rowsBetween(-2,0)（最近 3 笔）
+
+* 第 3 行窗口 = Day1 + Day2 + Day20
+* 时间跨度 = **20 天**
+
+---
+
+### rangeBetween(-7d,0)（最近 7 天）
+
+* 第 3 行窗口 = **只有 Day20**
+* 因为前两笔已经超过 7 天
+
+---
+
+## 4️⃣ 银行为什么两个都用？
+
+| 场景         | 用哪个          | 原因    |
+| ---------- | ------------ | ----- |
+| 行为习惯（交易大小） | rowsBetween  | 平滑、稳定 |
+| 活跃度 / 风控   | rangeBetween | 时间敏感  |
+| 交易频率不稳定    | rangeBetween | 公平    |
+| 数据稀疏       | rowsBetween  | 不会空   |
+
+---
+
+## 5️⃣ 常见坑（面试爱问）
+
+### ❌ rangeBetween + timestamp
+
+```python
+.orderBy("txn_ts")
+.rangeBetween(-7*86400, 0)
+```
+
+❌ 报错
+
+### ✅ 正确写法
+
+```python
+.orderBy(col("txn_ts").cast("long"))
+```
+
+---
+
+### ❌ rowsBetween 当成“7 天”
+
+```python
+.rowsBetween(-7, 0)
+```
+
+❌ 这是 **7 行，不是 7 天**
+
+---
+
+## 6️⃣ 什么时候选哪个？（记住这张表）
+
+| 你想要    | 选            |
+| ------ | ------------ |
+| 最近 N 笔 | rowsBetween  |
+| 最近 N 天 | rangeBetween |
+| 时间特征   | rangeBetween |
+| 行为模式   | rowsBetween  |
+
+---
+
+## 7️⃣ 面试一句话（直接背）
+
+> **rowsBetween 是行驱动窗口，rangeBetween 是时间/数值驱动窗口**
+
+
+
+
 好，这些**正是 Databricks / Spark 真·进阶必学点**。我给你一套**“MLE + 银行场景友好”**的讲解，**不啰嗦、直给、带例子、帮你建立感觉**。
 
 ---
