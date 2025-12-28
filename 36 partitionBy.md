@@ -1,4 +1,133 @@
-好，这里我**只回答这个 “why”**，对准你标的那一句 👇
+这行代码 **不对**，而且这是一个**非常常见的新手坑** 👍
+我直接给你**结论 → 原因 → 正确用法**。
+
+---
+
+## ❌ 这行为什么不行
+
+```python
+df.partionBy("account_id").display()
+```
+
+### 原因 1：拼写错误
+
+```text
+partionBy ❌
+partitionBy ✅
+```
+
+但就算你拼对了，**还是不行**👇
+
+---
+
+## 原因 2（关键）：`partitionBy` 不是 DataFrame 的方法
+
+👉 **`partitionBy` 只属于 `Window` 或 `write`，不属于 `DataFrame`**
+
+---
+
+## Spark 里有 3 个“partition”，但意思完全不同
+
+### ① Window 的 partition（你前面学的这个）
+
+```python
+from pyspark.sql.window import Window
+
+w = Window.partitionBy("account_id").orderBy("txn_ts")
+```
+
+👉 **这是逻辑分组，用来算特征**
+
+* running sum
+* rolling avg
+* 近 7 天 / 30 天
+
+❌ 不能 `display()`
+
+---
+
+### ② DataFrame 的物理分区（repartition / coalesce）
+
+```python
+df.repartition("account_id").display()
+```
+
+👉 **这是 Spark 执行层的 partition**
+
+* 决定 shuffle
+* 决定并行度
+* 和 window 特征**不是一回事**
+
+✅ 可以 `display()`
+
+---
+
+### ③ 写数据时的 partition（Hive / Delta）
+
+```python
+df.write.partitionBy("account_id").save(...)
+```
+
+👉 **这是存储分区**
+
+* 文件按 account_id 分目录
+* 用于查询加速
+
+---
+
+## 所以你真正想干的是什么？我帮你对号入座
+
+### 如果你是想「看 account_id 分组后的结果」
+
+```python
+df.orderBy("account_id").display()
+```
+
+或
+
+```python
+df.groupBy("account_id").count().display()
+```
+
+---
+
+### 如果你是想「按 account 算 window 特征」
+
+```python
+from pyspark.sql.functions import sum
+from pyspark.sql.window import Window
+
+w = Window.partitionBy("account_id").orderBy("txn_ts")
+
+df.withColumn("running_sum", sum("amount").over(w)).display()
+```
+
+---
+
+### 如果你是想「让 Spark 并行更合理」
+
+```python
+df = df.repartition("account_id")
+df.display()
+```
+
+---
+
+## 一张速记表（银行 MLE 必背）
+
+| 你想干什么  | 用哪个                   |
+| ------ | --------------------- |
+| 算滚动特征  | `Window.partitionBy`  |
+| 改执行并行度 | `df.repartition()`    |
+| 存表分区   | `write.partitionBy()` |
+| 看数据    | `display()`           |
+
+---
+
+## 一句总结
+
+> **`partitionBy` 从来不是用来 display 的，
+> 它要么定义 window 计算边界，要么定义数据怎么被切分存储。**
 
 > **A 的最后一笔交易，为什么会包含 B 的 1000？**
 
