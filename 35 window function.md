@@ -319,4 +319,82 @@ col("txn_ts").cast("long")
 > * 高级组合特征（金额×时间间隔、z-score、趋势）
 
 
+好，我们用一个 **具体银行账户交易例子** 来直观对比 **有排序 vs 无排序** 的区别，尤其是 `rowsBetween` 或 `rangeBetween` 下的行为。
+
+---
+
+## 1️⃣ 数据准备
+
+假设账户 A 最近 5 笔交易：
+
+| txn_id | txn_ts           | amount |
+| ------ | ---------------- | ------ |
+| T1     | 2025-01-01 10:00 | 100    |
+| T2     | 2025-01-03 12:00 | 50     |
+| T3     | 2025-01-02 09:00 | 200    |
+| T4     | 2025-01-05 09:00 | 30     |
+| T5     | 2025-01-04 11:00 | 120    |
+
+注意 **txn_ts 是乱序的**。
+
+---
+
+## 2️⃣ window 不排序（只 partitionBy）
+
+```python
+from pyspark.sql.window import Window
+from pyspark.sql.functions import sum, col
+
+w = Window.partitionBy("account_id").rowsBetween(-2, 0)
+
+df.withColumn(
+    "last_3_txn_amount",
+    sum(col("amount")).over(w)
+).show()
+```
+
+### 计算过程
+
+* Spark 会按 **DataFrame 原始顺序**计算：
+
+  * 第 1 行 T1 → sum(100) = 100
+  * 第 2 行 T2 → sum(100+50) = 150
+  * 第 3 行 T3 → sum(100+50+200) = 350
+  * 第 4 行 T4 → sum(50+200+30) = 280
+  * 第 5 行 T5 → sum(200+30+120) = 350
+
+> ❌ 明显错误，因为“最近 3 笔交易”不是按时间，而是按 DataFrame 原始顺序
+
+---
+
+## 3️⃣ window 排序（按 txn_ts）
+
+```python
+w = Window.partitionBy("account_id").orderBy("txn_ts").rowsBetween(-2, 0)
+
+df.withColumn(
+    "last_3_txn_amount",
+    sum(col("amount")).over(w)
+).show()
+```
+
+### 计算过程（按时间顺序）
+
+* 按 txn_ts 排序：
+
+| txn_id | txn_ts           | amount |
+| ------ | ---------------- | ------ |
+| T1     | 2025-01-01 10:00 | 100    |
+| T3     | 2025-01-02 09:00 | 200    |
+| T2     | 2025-01-03 12:00 | 50     |
+| T5     | 2025-01-04 11:00 | 120    |
+| T4     | 2025-01-05 09:00 | 30     |
+
+* 第 3 行 T2 → 最近 3 笔 = 100 + 200 + 50 = 350 ✅
+* 第 5 行 T4 → 最近 3 笔 = 50 + 120 + 30 = 200 ✅
+
+> ✔️ 结果符合“最近 3 笔交易”的业务逻辑
+
+
+
 
