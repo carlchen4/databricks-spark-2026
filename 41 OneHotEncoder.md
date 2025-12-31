@@ -2,6 +2,8 @@
 
 在 Spark ML 中，**Pipeline 就像流水线**，把多个 **数据处理步骤 + 特征工程 + 模型** 串起来，按顺序执行。
 
+https://www.youtube.com/watch?v=rsyrZnZ8J2o
+
 ### 作用：
 
 1. **把整个流程自动化**
