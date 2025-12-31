@@ -1,31 +1,3 @@
-from pyspark.ml import Pipeline
-from pyspark.ml.feature import StringIndexer, OneHotEncoder
-from pyspark.sql import SparkSession
-
-
-# Step 1: StringIndexer
-indexer = StringIndexer(
-    inputCol="txn_type",
-    outputCol="txn_type_idx",
-    handleInvalid="keep"   # 防生产 crash
-)
-
-# Step 2: OneHotEncoder
-encoder = OneHotEncoder(
-    inputCols=["txn_type_idx"],
-    outputCols=["txn_type_ohe"],
-    dropLast=True           # 避免 multicollinearity
-)
-
-# Step 3: Pipeline
-pipeline = Pipeline(stages=[indexer, encoder])
-
-pipeline_model = pipeline.fit(txn)  
-df_transformed = pipeline_model.transform(txn)
-
-
-
-
 ## 一、Pipeline 是什么？
 
 在 Spark ML 中，**Pipeline 就像流水线**，把多个 **数据处理步骤 + 特征工程 + 模型** 串起来，按顺序执行。
@@ -141,7 +113,157 @@ TRANSFER → [0,0,1]
 > Pipeline + StringIndexer + OneHotEncoder 是 **银行机器学习特征工程的标准做法**，可以把类别特征安全、高效、自动化地转成模型可用的数值特征，同时防止生产数据异常或新类别导致报错。
 
 ---
+明白，我帮你把前面解释的 **Pipeline + StringIndexer + OneHotEncoder 的原理和作用**，直接整合到 **带 Spark 代码的知识总结**，让你一边看原理一边能直接跑。
 
-如果你想，我可以帮你画一个 **银行 transactions → Pipeline → 模型训练的完整流程图**，让你一眼看懂每一步的作用。
+---
 
-你希望我画吗？
+# 银行 MLE 特征工程：Pipeline + StringIndexer + OneHotEncoder
+
+## 一、背景
+
+* `txn_type` 是银行交易表中的类别特征（DEBIT / CREDIT / TRANSFER / REVERSAL…）
+* **目标**：把它转换为 **模型可用特征**，适合线性或树模型
+* **原则**：
+
+  1. 防生产 crash → `handleInvalid="keep"`
+  2. 线性模型 → 用 OHE 消除顺序误导
+  3. 树模型 → 直接用索引也可
+
+---
+
+## 二、Spark 代码示例
+
+```python
+from pyspark.sql import SparkSession
+from pyspark.ml import Pipeline
+from pyspark.ml.feature import StringIndexer, OneHotEncoder
+from pyspark.sql.functions import udf
+from pyspark.sql.types import ArrayType, DoubleType
+
+# 1️⃣ 创建 Spark Session
+spark = SparkSession.builder.appName("BankMLE").getOrCreate()
+
+# 2️⃣ 假设银行 transactions 表
+data = [
+    ("TXN001","DEBIT"),
+    ("TXN002","CREDIT"),
+    ("TXN003","TRANSFER"),
+    ("TXN004","DEBIT"),
+    ("TXN005","REVERSAL")
+]
+df = spark.createDataFrame(data, ["transaction_id", "txn_type"])
+df.show()
+```
+
+输出：
+
+```
++-------------+---------+
+|transaction_id|txn_type|
++-------------+---------+
+|TXN001       |DEBIT    |
+|TXN002       |CREDIT   |
+|TXN003       |TRANSFER |
+|TXN004       |DEBIT    |
+|TXN005       |REVERSAL |
++-------------+---------+
+```
+
+---
+
+### 3️⃣ 定义 Pipeline
+
+```python
+# Step 1: StringIndexer
+indexer = StringIndexer(
+    inputCol="txn_type",
+    outputCol="txn_type_idx",
+    handleInvalid="keep"   # 防生产 crash
+)
+
+# Step 2: OneHotEncoder
+encoder = OneHotEncoder(
+    inputCols=["txn_type_idx"],
+    outputCols=["txn_type_ohe"],
+    dropLast=True           # 避免 multicollinearity
+)
+
+# Step 3: Pipeline
+pipeline = Pipeline(stages=[indexer, encoder])
+```
+
+---
+
+### 4️⃣ fit & transform
+
+```python
+# 训练 pipeline (只 fit 在训练集)
+pipeline_model = pipeline.fit(df)
+df_transformed = pipeline_model.transform(df)
+
+df_transformed.select("transaction_id","txn_type","txn_type_idx","txn_type_ohe").show(truncate=False)
+```
+
+输出示例：
+
+```
++-------------+---------+------------+----------------+
+|transaction_id|txn_type|txn_type_idx|txn_type_ohe    |
++-------------+---------+------------+----------------+
+|TXN001       |DEBIT    |0.0         |(4,[0],[1.0])  |
+|TXN002       |CREDIT   |1.0         |(4,[1],[1.0])  |
+|TXN003       |TRANSFER |2.0         |(4,[2],[1.0])  |
+|TXN004       |DEBIT    |0.0         |(4,[0],[1.0])  |
+|TXN005       |REVERSAL |3.0         |(4,[3],[1.0])  |
++-------------+---------+------------+----------------+
+```
+
+---
+
+### 5️⃣ 展开 Sparse Vector（可选，便于查看）
+
+```python
+# UDF: SparseVector -> Array
+vector_to_array_udf = udf(lambda v: v.toArray().tolist(), ArrayType(DoubleType()))
+df_final = df_transformed.withColumn("txn_type_ohe_array", vector_to_array_udf("txn_type_ohe"))
+
+df_final.select("transaction_id","txn_type","txn_type_ohe_array").show(truncate=False)
+```
+
+输出：
+
+```
++-------------+---------+----------------+
+|transaction_id|txn_type|txn_type_ohe_array|
++-------------+---------+----------------+
+|TXN001       |DEBIT    |[1.0,0.0,0.0,0.0]|
+|TXN002       |CREDIT   |[0.0,1.0,0.0,0.0]|
+|TXN003       |TRANSFER |[0.0,0.0,1.0,0.0]|
+|TXN004       |DEBIT    |[1.0,0.0,0.0,0.0]|
+|TXN005       |REVERSAL |[0.0,0.0,0.0,1.0]|
++-------------+---------+----------------+
+```
+
+✅ 可以直接喂给 Logistic Regression 或存到 Feature Store
+
+---
+
+## 三、知识总结（结合代码）
+
+| 步骤            | 作用                           | Spark 代码                                                                                |
+| ------------- | ---------------------------- | --------------------------------------------------------------------------------------- |
+| StringIndexer | 字符串类别 → 数字索引（0,1,2…）         | `StringIndexer(inputCol="txn_type", outputCol="txn_type_idx", handleInvalid="keep")`    |
+| OneHotEncoder | 数字索引 → Sparse Vector（每类独立一列） | `OneHotEncoder(inputCols=["txn_type_idx"], outputCols=["txn_type_ohe"], dropLast=True)` |
+| Pipeline      | 串联步骤，训练 / 测试 / 线上一致          | `Pipeline(stages=[indexer, encoder])`                                                   |
+| 展示 / debug    | 查看 OHE 数值                    | `udf(lambda v: v.toArray().tolist())`                                                   |
+
+---
+
+### 四、银行实战要点
+
+1. **handleInvalid="keep"** → 防止生产 crash
+2. **dropLast=True** → 避免线性模型多重共线
+3. **训练 Pipeline 只 fit 在训练集** → 防止数据泄漏
+4. **树模型可只用 StringIndexer** → 避免维度爆炸
+5. **Feature Store** → 可以存 OHE 列直接复用
+
