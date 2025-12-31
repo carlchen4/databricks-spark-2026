@@ -271,3 +271,183 @@ df_final.select("transaction_id","txn_type","txn_type_ohe_array").show(truncate=
 4. **树模型可只用 StringIndexer** → 避免维度爆炸
 5. **Feature Store** → 可以存 OHE 列直接复用
 
+
+好，这个是 **Spark / 银行 MLE 面试必问题**。
+我直接给你 **结论 → 原理 → 银行场景 → 面试答案**，一遍就懂。
+
+---
+
+## 一句话结论（先背）
+
+> **StringIndexer = 编码（label → number）**
+> **OneHotEncoder = 展开（number → vector）**
+> 👉 **不是二选一，是前后两步**
+
+---
+
+## 一、它们各自是干嘛的？
+
+### 1️⃣ StringIndexer（必须先用）
+
+**作用：**
+
+> 把字符串类别 → 数字 ID
+
+```text
+DEBIT    → 0
+CREDIT   → 1
+TRANSFER → 2
+```
+
+```python
+StringIndexer(
+  inputCol="txn_type",
+  outputCol="txn_type_idx"
+)
+```
+
+📌 特点：
+
+* 不是 OHE
+* 数字 **没有大小意义**
+* 按 **频率排序**（默认）
+
+---
+
+### 2️⃣ OneHotEncoder
+
+**作用：**
+
+> 把数字 ID → One-Hot 向量
+
+```text
+0 → [1,0,0]
+1 → [0,1,0]
+2 → [0,0,1]
+```
+
+```python
+OneHotEncoder(
+  inputCols=["txn_type_idx"],
+  outputCols=["txn_type_ohe"]
+)
+```
+
+📌 特点：
+
+* 输出是 **Sparse Vector**
+* 适合线性模型
+* 防止“虚假顺序关系”
+
+---
+
+## 二、为什么不能只用 StringIndexer？（很关键）
+
+### ❌ 错误理解
+
+```text
+CREDIT (2) > DEBIT (0)
+```
+
+模型会以为：
+
+> CREDIT 比 DEBIT “更大”
+
+👉 对 **Logistic / Linear Model** 是灾难
+
+---
+
+## 三、银行里什么时候用哪个？
+
+### 场景 1：Logistic Regression / Linear Model
+
+✅ **必须：StringIndexer + OneHotEncoder**
+
+```text
+txn_type_ohe = [0,1,0]
+```
+
+原因：
+
+* 避免顺序误导
+* 权重可解释
+
+---
+
+### 场景 2：Tree / XGBoost / LightGBM
+
+✅ **只用 StringIndexer**
+
+```text
+txn_type_idx = 2
+```
+
+原因：
+
+* 树不关心大小，只关心 split
+* OHE 会 **维度爆炸**
+* 训练更慢
+
+---
+
+### 场景 3：Rule / SQL / Feature Engineering
+
+❌ 都不用
+直接：
+
+```sql
+count(case when txn_type='DEBIT' then 1 end)
+```
+
+---
+
+## 四、对比表（面试最爱）
+
+| 对比项     | StringIndexer | OneHotEncoder |
+| ------- | ------------- | ------------- |
+| 输入      | String        | Index         |
+| 输出      | 数字            | 向量            |
+| 是否单独用   | ✅（树模型）        | ❌             |
+| 是否有顺序误导 | ⚠️ 有          | ❌             |
+| 维度      | 1             | N             |
+| 银行使用频率  | ⭐️⭐️⭐️        | ⭐️⭐️          |
+
+---
+
+## 五、真实银行 Pipeline（标准写法）
+
+```python
+from pyspark.ml import Pipeline
+
+pipeline = Pipeline(stages=[
+    StringIndexer(
+        inputCol="txn_type",
+        outputCol="txn_type_idx",
+        handleInvalid="keep"
+    ),
+    OneHotEncoder(
+        inputCols=["txn_type_idx"],
+        outputCols=["txn_type_ohe"],
+        dropLast=True
+    )
+])
+```
+
+---
+
+## 六、面试级总结回答（你可以直接背）
+
+> StringIndexer converts categorical strings into numerical indices, which is required before modeling.
+> OneHotEncoder then converts those indices into sparse vectors to remove any artificial ordinal relationship.
+> In banking, we typically use both for linear models, but only StringIndexer for tree-based models to avoid dimensional explosion.
+
+---
+
+## 七、加分点（你像 CIBC / HSBC MLE）
+
+* `handleInvalid="keep"` 防 production crash
+* `dropLast=True` 防 multicollinearity
+* Indexer **只 fit 在 training data**（防 leakage）
+* Feature Store 里 **存 OHE 结果，不存 raw**
+
+
