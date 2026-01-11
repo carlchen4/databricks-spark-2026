@@ -4,6 +4,48 @@
 * 内置 fake 模型（不用额外文件）
 * `/predict` 接口
 * 可直接在 Git Bash 本地运行
+* 
+#### Pre-requirement 
+
+### Go to your project folder
+
+```bash
+cd /c/Users/Carl/Desktop/model_api_demo
+```
+
+---
+
+### Create the virtual environment
+
+```bash
+python -m venv venv
+```
+
+This creates a folder named `venv/`.
+
+---
+
+### Activate it
+
+### 👉 Git Bash / macOS / Linux:
+
+```bash
+source venv/Scripts/activate
+```
+
+### 👉 Windows PowerShell / CMD:
+
+```powershell
+venv\Scripts\activate
+```
+
+You should see:
+
+```text
+(venv)
+```
+
+in your terminal.
 
 ---
 
