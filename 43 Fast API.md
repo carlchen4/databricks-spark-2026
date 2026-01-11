@@ -127,6 +127,15 @@ pip install fastapi uvicorn
 python -m uvicorn app:app --reload
 ```
 
+
+## 验证
+
+你会发现folder 变化
+
+```bash
+\venv\Lib\site-packages
+```
+ 
 ---
 
 ## 🧪 测试
