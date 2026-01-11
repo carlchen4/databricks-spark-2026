@@ -140,10 +140,14 @@ python -m uvicorn app:app --reload
 
 ## 🧪 测试
 
-浏览器：
+POSTMAN：
 
 ```
-http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/predict
+```
+
+```bash
+Header: Content-Type: application/json
 ```
 
 请求示例：
