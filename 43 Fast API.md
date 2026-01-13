@@ -10,7 +10,7 @@
 ### Go to your project folder
 
 ```bash
-cd /c/Users/Carl/Desktop/model_api_demo
+cd /c/Users/carlc/OneDrive/spark2026
 ```
 
 ---
