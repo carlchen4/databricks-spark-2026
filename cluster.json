@@ -1,0 +1,31 @@
+{
+  "cluster_name": "interactive-16-4-lts-single-node-03",
+  "spark_version": "16.4.x-scala2.12",
+  "runtime_engine": "PHOTON",
+  "node_type_id": "Standard_DS3_v2",
+   "driver_node_type_id": "Standard_DS3_v2",
+  "num_workers": 0,
+  "autotermination_minutes": 30,
+  "enable_elastic_disk": true,
+  "data_security_mode": "USER_ISOLATION",
+  "single_user_name": "carlchenn@hotmail.com",
+  "spark_conf": {
+    "spark.sql.adaptive.enabled": "true",
+    "spark.sql.shuffle.partitions": "200",
+    "spark.databricks.adaptive.autoBroadcastJoinThreshold": "1.5MB",
+    "spark.databricks.delta.autoCompact.enabled": "true",
+    "spark.master": "local[*]",
+    "spark.databricks.cluster.profile": "singleNode"
+  },
+  "azure_attributes": {
+    "first_on_demand": 1,
+    "availability": "ON_DEMAND_AZURE",
+    "spot_bid_max_price": -1
+  },
+  "custom_tags": {
+    "ResourceClass": "SingleNode"
+  },
+  "kind": "CLASSIC_PREVIEW",
+  "is_single_node": true
+}
+
