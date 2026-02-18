@@ -1,0 +1,11 @@
+bundle:
+  name: carl-etl-project
+
+targets:
+  dev:
+    default: true
+    workspace:
+      host: https://adb-7405615225417288.8.azuredatabricks.net
+
+include:
+  - resources/*.yml
