@@ -922,7 +922,7 @@ class ETL:
                 existing_in_reject = spark.read.table(self.reject_table).filter(col("run_id") == run_id).count()
         except Exception as e:
             print(f"ℹ️ Could not check for duplicate run_id (tables may be empty): {e}")
-        start_ts = datetime.now(ZoneInfo("America/Toronto"))
+        start_ts = datetime.now(ZoneInfo("America/Toronto")).replace(tzinfo=None)
         self.previous_version = self.get_version()
         print(f"\n🔒 Starting ETL job: {run_id}")
 
@@ -944,7 +944,7 @@ class ETL:
         # Read source
         df_source = self.read_source()
         if df_source is None:
-            metrics.end_ts   = datetime.now(ZoneInfo("America/Toronto"))
+            metrics.end_ts   = datetime.now(ZoneInfo("America/Toronto")).replace(tzinfo=None)
             metrics.run_error = "Source table not found or not accessible"
             self.log_control(metrics)
             return run_id
@@ -1027,7 +1027,7 @@ class ETL:
                 self.log_control(metrics)
                 return run_id
 
-            metrics.end_ts = datetime.now(ZoneInfo("America/Toronto"))
+            metrics.end_ts = datetime.now(ZoneInfo("America/Toronto")).replace(tzinfo=None)
             self.log_control(metrics)
             return run_id
 
