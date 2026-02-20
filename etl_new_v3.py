@@ -8,14 +8,13 @@
 # summary current table and previous - remove backup - like manual flag? 
 # check shema of source and target match before hash check - done 
 # run time is not toronto time  - done 
-# * (optional) validaion key attribute  
 # optimiza Control Table - done 
 # batch needs to check if unique - done 
 # backup needs to be deleted and manually trigger ? 
 # do not show filed name in function  ? 
 # start_time vs self start_time ? 
 # organize the control table and reject table. - done
-# mask raw record ?
+# mask raw record - done 
 # watermark and mode? 
 # document all testcases 
 
@@ -262,7 +261,8 @@ class ETL:
     def __init__(self, source_table: str, target_table: str, control_table: str, reject_table: str,
                  mask_pii: bool = False,
                  pii_fields: dict = None,
-                 auto_restore: bool = True):
+                 auto_restore: bool = True,
+                 business_rules: list = None):
         self.ETL_VERSION = "1.0.0"
         self.source_table = source_table
         self.target_table = target_table
@@ -271,6 +271,8 @@ class ETL:
         self.current_version = None  # To track pre-write Delta version for potential rollback
         self.previous_version = None  # To track previous version for rollback
         self.auto_restore = auto_restore
+        # Business rules: list of (condition_column, error_message) tuples
+        self._business_rules = business_rules or []
         # PII masking: active when mask_pii=True, pass-through (no rules) when False
         if not mask_pii:
             self._pii_masker = PIIMasker()          # no rules → all fields written as-is
@@ -331,26 +333,49 @@ class ETL:
 
     
     def check_business_rules(self, df: DataFrame) -> DataFrame:
-        """Apply validation rules and mark records as PASS/REJECT"""
+        """Apply validation rules and mark records as PASS/REJECT.
+
+        By default, the built-in rules below are used.
+        Pass ``business_rules`` to ETL.__init__ to override them entirely:
+
+            business_rules = [
+                (col("amount").isNull() | (col("amount") <= 0), "[CRITICAL] Invalid Amount"),
+                (col("transaction_id").isNull(),                 "[MISSING_KEY] No Transaction ID"),
+                (col("currency").isNull(),                       "[MISSING] No Currency"),   # custom
+            ]
+        """
         print("\n🔍 Starting business rules validation...")
-        df_validated = df.withColumn(
-            "validation_status",
-            when((col("amount").isNull()) | (col("amount") <= 0), "REJECT")
-            .when(col("transaction_id").isNull(), "REJECT")
-            .otherwise("PASS")
-        ).withColumn(
-            "error_reason",
-            when((col("amount").isNull()) | (col("amount") <= 0), "[CRITICAL] Invalid Amount")
-            .when(col("transaction_id").isNull(), "[MISSING_KEY] No Transaction ID")
-            .otherwise(None)
-        )
-        # Check if all records passed validation
+
+        # ── Default rules (used when no custom rules are injected) ──────────
+        default_rules = [
+            (col("amount").isNull() | (col("amount") <= 0), "[CRITICAL] Invalid Amount"),
+            (col("transaction_id").isNull(),                 "[MISSING_KEY] No Transaction ID"),
+        ]
+        # Use injected rules if provided, otherwise fall back to defaults
+        rules = self._business_rules if self._business_rules else default_rules
+        rule_source = "custom" if self._business_rules else "default"
+        print(f"   Using {rule_source} rules ({len(rules)} rule(s))")
+
+        if not rules:
+            print("⚠️  No business rules defined — all records marked PASS")
+            return df.withColumn("validation_status", lit("PASS")) \
+                     .withColumn("error_reason", lit(None).cast("string"))
+
+        # Build validation_status and error_reason chains from the rules list
+        status_expr = lit("PASS")
+        reason_expr = lit(None).cast("string")
+        for condition, message in reversed(rules):
+            status_expr = when(condition, "REJECT").otherwise(status_expr)
+            reason_expr = when(condition, message).otherwise(reason_expr)
+
+        df_validated = df.withColumn("validation_status", status_expr) \
+                         .withColumn("error_reason", reason_expr)
+
         failed_count = df_validated.filter(col("validation_status") == "REJECT").count()
         if failed_count == 0:
             print("✅ Business rules validation passed - all records are valid")
         else:
             print(f"❌ Business rules validation found {failed_count} invalid records")
-
         return df_validated
     
 
@@ -464,14 +489,11 @@ class ETL:
             return source_df.withColumn("validation_status", lit("PASS")) \
                            .withColumn("error_reason", lit(None).cast("string"))
 
-    # ETL-internal columns added during validation — excluded from the raw_record snapshot
-    _ETL_COLS = ["validation_status", "error_reason"]
-
     def log_rejects(self, run_id: str, df_bad: DataFrame) -> None:
         """Write rejected records to reject table, masking PII in the raw_record snapshot."""
-        # masked_struct_expr builds col() references evaluated against df_bad itself,
-        # so masking is applied correctly within the single select() call.
-        raw_record_expr = self._pii_masker.masked_struct_expr(df_bad, exclude_cols=self._ETL_COLS)
+        # Columns added during pipeline validation — excluded from the raw_record snapshot
+        etl_cols = ["validation_status", "error_reason"]
+        raw_record_expr = self._pii_masker.masked_struct_expr(df_bad, exclude_cols=etl_cols)
 
         df_rejects_log = df_bad.select(
             expr("uuid()").alias("reject_id"),
@@ -1046,10 +1068,18 @@ pii_fields = {
     "account_id": "partial",
 }
 
+# Define business rules as (condition, error_message) tuples — edit here only when rules change
+business_rules = [
+    (col("amount").isNull() | (col("amount") <= 0), "[CRITICAL] Invalid Amount"),
+    (col("transaction_id").isNull(),                 "[MISSING_KEY] No Transaction ID"),
+]
+
 etl = ETL(source_table, target_table, control_table, reject_table,
-          mask_pii     = False,      # set True to mask PII fields in raw_record
-          pii_fields   = pii_fields,
-          auto_restore = False)       # set False to print manual restore command instead of auto-rollback
+          mask_pii        = False,
+          pii_fields      = pii_fields,
+          auto_restore    = False,
+          business_rules  = business_rules)
+
 last_run_id = etl.run_etl(
     partition_column  = "transaction_date",
     environment       = "PROD",
