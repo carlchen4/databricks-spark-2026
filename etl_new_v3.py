@@ -998,11 +998,10 @@ class ETL:
 
             # Hash validation
             current_batch_target = df_target_batch.drop("load_timestamp", "run_id")
-            # test hash
-            # Modify a row to test hash validation
+            # Testcases: Modify a row to test hash validation
             current_batch_target = current_batch_target.withColumn(
                 "amount",
-                when(col("transaction_id") == current_batch_target.second()["transaction_id"], lit(999.99))
+                when(col("transaction_id") == current_batch_target.first()["transaction_id"], lit(999.99))
                 .otherwise(col("amount"))
             )
 
