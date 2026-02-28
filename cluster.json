@@ -3,9 +3,9 @@
     "creator_user_name": "carlchenn@hotmail.com",
     "driver": {
         "private_ip": "10.139.64.4",
-        "node_id": "b3a17033e623417ca0fcf4e41d5a964b",
+        "node_id": "50bb4297bc2746d6bbb1dcf17664697a",
         "instance_id": "5283362ee9cd4962be00da1731982322",
-        "start_timestamp": 1772241795951,
+        "start_timestamp": 1772254842415,
         "node_type_id": "Standard_DS3_v2",
         "node_attributes": {
             "is_spot": false
@@ -13,14 +13,18 @@
         "host_private_ip": "10.139.0.4",
         "ngrok_endpoint_base_domain": "green.mux.ngrok-dataplane.wildcard"
     },
-    "spark_context_id": 5537741385145557000,
+    "spark_context_id": 6960357799193549000,
     "driver_healthy": true,
     "jdbc_port": 10000,
     "cluster_name": "carl_cluster",
     "spark_version": "16.4.x-scala2.12",
     "spark_conf": {
+        "spark.executor.extraJavaOptions": "-Duser.timezone=America/Toronto",
         "spark.sql.session.timeZone": "America/Toronto",
+        "spark.driver.extraJavaOptions": "-Duser.timezone=America/Toronto",
         "spark.master": "local[*, 4]",
+        "spark.driverEnv.TZ": "America/Toronto",
+        "spark.executorEnv.TZ": "America/Toronto",
         "spark.databricks.cluster.profile": "singleNode"
     },
     "azure_attributes": {
@@ -50,11 +54,11 @@
     "kind": "CLASSIC_PREVIEW",
     "is_single_node": true,
     "state": "RESTARTING",
-    "state_message": "Setting up 1 nodes.",
+    "state_message": "Starting Spark",
     "start_time": 1771351187949,
-    "last_state_loss_time": 1772253011062,
-    "last_activity_time": 1772241836197,
-    "last_restarted_time": 1772241925029,
+    "last_state_loss_time": 1772254991689,
+    "last_activity_time": 1772254869352,
+    "last_restarted_time": 1772254942228,
     "num_workers": 0,
     "default_tags": {
         "Vendor": "Databricks",
@@ -68,7 +72,11 @@
         "cluster_name": "carl_cluster",
         "spark_version": "16.4.x-scala2.12",
         "spark_conf": {
-            "spark.sql.session.timeZone": "America/Toronto"
+            "spark.sql.session.timeZone": "America/Toronto",
+            "spark.driver.extraJavaOptions": "-Duser.timezone=America/Toronto",
+            "spark.executor.extraJavaOptions": "-Duser.timezone=America/Toronto",
+            "spark.driverEnv.TZ": "America/Toronto",
+            "spark.executorEnv.TZ": "America/Toronto"
         },
         "node_type_id": "Standard_DS3_v2",
         "autotermination_minutes": 120,
