@@ -1,31 +1,82 @@
 {
-  "cluster_name": "interactive-16-4-lts-single-node-03",
-  "spark_version": "16.4.x-scala2.12",
-  "runtime_engine": "PHOTON",
-  "node_type_id": "Standard_DS3_v2",
-   "driver_node_type_id": "Standard_DS3_v2",
-  "num_workers": 0,
-  "autotermination_minutes": 30,
-  "enable_elastic_disk": true,
-  "data_security_mode": "USER_ISOLATION",
-  "single_user_name": "carlchenn@hotmail.com",
-  "spark_conf": {
-    "spark.sql.adaptive.enabled": "true",
-    "spark.sql.shuffle.partitions": "200",
-    "spark.databricks.adaptive.autoBroadcastJoinThreshold": "1.5MB",
-    "spark.databricks.delta.autoCompact.enabled": "true",
-    "spark.master": "local[*]",
-    "spark.databricks.cluster.profile": "singleNode"
-  },
-  "azure_attributes": {
-    "first_on_demand": 1,
-    "availability": "ON_DEMAND_AZURE",
-    "spot_bid_max_price": -1
-  },
-  "custom_tags": {
-    "ResourceClass": "SingleNode"
-  },
-  "kind": "CLASSIC_PREVIEW",
-  "is_single_node": true
+    "cluster_id": "0217-175947-b1e3a26w",
+    "creator_user_name": "carlchenn@hotmail.com",
+    "driver": {
+        "private_ip": "10.139.64.4",
+        "node_id": "b3a17033e623417ca0fcf4e41d5a964b",
+        "instance_id": "5283362ee9cd4962be00da1731982322",
+        "start_timestamp": 1772241795951,
+        "node_type_id": "Standard_DS3_v2",
+        "node_attributes": {
+            "is_spot": false
+        },
+        "host_private_ip": "10.139.0.4",
+        "ngrok_endpoint_base_domain": "green.mux.ngrok-dataplane.wildcard"
+    },
+    "spark_context_id": 5537741385145557000,
+    "driver_healthy": true,
+    "jdbc_port": 10000,
+    "cluster_name": "carl_cluster",
+    "spark_version": "16.4.x-scala2.12",
+    "spark_conf": {
+        "spark.sql.session.timeZone": "America/Toronto",
+        "spark.master": "local[*, 4]",
+        "spark.databricks.cluster.profile": "singleNode"
+    },
+    "azure_attributes": {
+        "first_on_demand": 1,
+        "availability": "ON_DEMAND_AZURE",
+        "spot_bid_max_price": -1
+    },
+    "node_type_id": "Standard_DS3_v2",
+    "driver_node_type_id": "Standard_DS3_v2",
+    "custom_tags": {
+        "ResourceClass": "SingleNode"
+    },
+    "autotermination_minutes": 120,
+    "enable_elastic_disk": true,
+    "disk_spec": {},
+    "cluster_source": "UI",
+    "enable_local_disk_encryption": false,
+    "instance_source": {
+        "node_type_id": "Standard_DS3_v2"
+    },
+    "driver_instance_source": {
+        "node_type_id": "Standard_DS3_v2"
+    },
+    "data_security_mode": "USER_ISOLATION",
+    "runtime_engine": "PHOTON",
+    "effective_spark_version": "16.4.x-photon-scala2.12",
+    "kind": "CLASSIC_PREVIEW",
+    "is_single_node": true,
+    "state": "RESTARTING",
+    "state_message": "Setting up 1 nodes.",
+    "start_time": 1771351187949,
+    "last_state_loss_time": 1772253011062,
+    "last_activity_time": 1772241836197,
+    "last_restarted_time": 1772241925029,
+    "num_workers": 0,
+    "default_tags": {
+        "Vendor": "Databricks",
+        "Creator": "carlchenn@hotmail.com",
+        "ClusterName": "carl_cluster",
+        "ClusterId": "0217-175947-b1e3a26w"
+    },
+    "pinned_by_user_name": "1636492972133299",
+    "init_scripts_safe_mode": false,
+    "spec": {
+        "cluster_name": "carl_cluster",
+        "spark_version": "16.4.x-scala2.12",
+        "spark_conf": {
+            "spark.sql.session.timeZone": "America/Toronto"
+        },
+        "node_type_id": "Standard_DS3_v2",
+        "autotermination_minutes": 120,
+        "data_security_mode": "DATA_SECURITY_MODE_AUTO",
+        "runtime_engine": "PHOTON",
+        "kind": "CLASSIC_PREVIEW",
+        "is_single_node": true,
+        "num_workers": 0,
+        "apply_policy_default_values": false
+    }
 }
-
